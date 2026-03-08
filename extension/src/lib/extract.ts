@@ -87,7 +87,7 @@ function extractFromDom(): Partial<Listing> {
   if (sellerDescIdx !== -1) {
     const afterDesc = allText.slice(sellerDescIdx + "Seller's description".length);
     const end = afterDesc.search(/\n(Location is approximate|Seller information|[A-Z][a-zA-Z\s]+, [A-Z]{2})/);
-    const raw = end !== -1 ? afterDesc.slice(0, end) : afterDesc.slice(0, 800);
+    const raw = end !== -1 ? afterDesc.slice(0, end) : afterDesc;
     const cleaned = raw.replace(/\.\.\. See more$/, "").trim();
     if (cleaned.length > 10) result.description = cleaned;
   }

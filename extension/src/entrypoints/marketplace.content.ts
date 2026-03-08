@@ -9,7 +9,21 @@ function push(listing: Listing) {
   browser.runtime.sendMessage({ type: "LISTING_EXTRACTED", payload: listing }).catch(() => {});
 }
 
-function extractAndPush() {
+const SEE_MORE_DELAY_MS = 400;
+
+function expandSeeMore(): Promise<void> {
+  // FB renders "See more" as a div[role=button] or a span containing exactly that text
+  const candidates = Array.from(document.querySelectorAll<HTMLElement>("[role=button]"));
+  const btn = candidates.find((el) => /^see more$/i.test(el.innerText.trim()));
+  if (btn) {
+    btn.click();
+    return new Promise((resolve) => setTimeout(resolve, SEE_MORE_DELAY_MS));
+  }
+  return Promise.resolve();
+}
+
+async function extractAndPush() {
+  await expandSeeMore();
   push(extractListing());
 }
 
@@ -38,7 +52,9 @@ export default defineContentScript({
     browser.runtime.onMessage.addListener(
       (message: ExtensionMessage, _sender, sendResponse) => {
         if (message.type !== "EXTRACT") return false;
-        sendResponse({ ok: true, data: extractListing() });
+        expandSeeMore().then(() => {
+          sendResponse({ ok: true, data: extractListing() });
+        });
         return true;
       }
     );

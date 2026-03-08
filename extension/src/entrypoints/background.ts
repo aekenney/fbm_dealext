@@ -1,5 +1,7 @@
 import type { ExtensionMessage, MessageResponse, Listing, SavedComp } from "~/types";
 import { saveComp, getComps } from "~/lib/storage";
+import { summarizeListing } from "~/lib/summarize";
+import { scoreListing } from "~/lib/score";
 
 async function getMarketplaceTabId(): Promise<number | null> {
   const tabs = await browser.tabs.query({ url: "*://www.facebook.com/marketplace/item/*" });
@@ -44,6 +46,18 @@ export default defineBackground(() => {
         case "GET_EXTRACTED":
           sendResponse({ ok: true, data: null });
           return true;
+        case "GET_AI_SUMMARY": {
+          const { listing, comps } = message.payload as { listing: Listing; comps: SavedComp[] };
+          const score = scoreListing(listing, comps);
+          summarizeListing(listing, comps, score)
+            .then((summary) => sendResponse({ ok: true, data: summary }))
+            .catch((err: unknown) => {
+              console.error("[DealExt] summarize error:", err);
+              const msg = err instanceof Error ? err.message : String(err);
+              sendResponse({ ok: false, data: null, error: msg });
+            });
+          return true;
+        }
         default:
           return false;
       }
