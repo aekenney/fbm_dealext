@@ -15,3 +15,11 @@ export type SavedComp = Listing & {
   id: string;
   savedAt: number;
 };
+
+export type ScoreLabel = "Deal" | "Fair" | "Overpriced" | "Insufficient data";
+
+export type Score = {
+  label: ScoreLabel;
+  percentile: number;
+  compCount: number;
+};

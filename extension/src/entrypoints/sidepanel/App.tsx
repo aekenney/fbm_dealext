@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import type { Listing, MessageResponse, MessageType, SavedComp } from "~/types";
-import { EXTENSION_NAME } from "~/lib";
+import type { Listing, MessageResponse, MessageType, SavedComp, Score } from "~/types";
+import { EXTENSION_NAME, scoreListing } from "~/lib";
 
 type View = "listing" | "comps";
 
@@ -62,14 +62,54 @@ function Spinner() {
   );
 }
 
+const SCORE_COLORS: Record<string, { bg: string; text: string }> = {
+  Deal:               { bg: "#e6f4ea", text: "#1e7e34" },
+  Fair:               { bg: "#fff8e1", text: "#b45309" },
+  Overpriced:         { bg: "#fdecea", text: "#c0392b" },
+  "Insufficient data":{ bg: "#f0f2f5", text: "#65676b" },
+};
+
+function ScoreBadge({ score }: { score: Score }) {
+  const colors = SCORE_COLORS[score.label];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span
+        style={{
+          background: colors.bg,
+          borderRadius: 6,
+          color: colors.text,
+          fontSize: 13,
+          fontWeight: 700,
+          padding: "4px 10px",
+        }}
+      >
+        {score.label}
+      </span>
+      {score.label !== "Insufficient data" && (
+        <span style={{ color: "#65676B", fontSize: 12 }}>
+          cheaper than {score.percentile}% of {score.compCount} comps
+        </span>
+      )}
+      {score.label === "Insufficient data" && (
+        <span style={{ color: "#65676B", fontSize: 12 }}>
+          {score.compCount < 3
+            ? `need ${3 - score.compCount} more comp${3 - score.compCount === 1 ? "" : "s"}`
+            : "no price to compare"}
+        </span>
+      )}
+    </div>
+  );
+}
+
 type ListingCardProps = {
   listing: Listing;
+  score: Score;
   onReanalyze: () => void;
   onSave: () => void;
   saveState: SaveState;
 };
 
-function ListingCard({ listing, onReanalyze, onSave, saveState }: ListingCardProps) {
+function ListingCard({ listing, score, onReanalyze, onSave, saveState }: ListingCardProps) {
   const fields: { label: string; value: string | null }[] = [
     { label: "Year", value: listing.year ? String(listing.year) : null },
     { label: "Make", value: listing.make },
@@ -85,9 +125,12 @@ function ListingCard({ listing, onReanalyze, onSave, saveState }: ListingCardPro
         <p style={{ color: "#1C1E21", fontSize: 17, fontWeight: 700, lineHeight: 1.3, marginBottom: 8 }}>
           {listing.title}
         </p>
-        <p style={{ fontSize: 24, fontWeight: 700, marginBottom: 12 }}>
+        <p style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>
           {listing.price !== null ? `$${fmt(listing.price)}` : "—"}
         </p>
+        <div style={{ marginBottom: 12 }}>
+          <ScoreBadge score={score} />
+        </div>
         <div style={{ borderTop: "1px solid #E4E6EB", paddingTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px 16px" }}>
           {fields.map(({ label, value }) => (
             <Field key={label} label={label} value={value} />
@@ -203,6 +246,15 @@ export default function App() {
   const [view, setView] = useState<View>("listing");
   const [listingState, setListingState] = useState<ListingState>({ status: "idle" });
   const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [comps, setComps] = useState<SavedComp[]>([]);
+
+  useEffect(() => {
+    browser.runtime
+      .sendMessage({ type: "GET_COMPS" })
+      .then((res: MessageResponse<SavedComp[]>) => {
+        if (res.ok && res.data) setComps(res.data);
+      });
+  }, []);
 
   useEffect(() => {
     const listener = (message: { type: MessageType; payload?: Listing }) => {
@@ -238,7 +290,12 @@ export default function App() {
         type: "SAVE_COMP",
         payload: listingState.listing,
       })) as MessageResponse<SavedComp>;
-      setSaveState(response.ok ? "saved" : "error");
+      if (response.ok && response.data) {
+        setComps((prev) => [response.data as SavedComp, ...prev]);
+        setSaveState("saved");
+      } else {
+        setSaveState("error");
+      }
     } catch {
       setSaveState("error");
     }
@@ -301,6 +358,7 @@ export default function App() {
             {listingState.status === "loaded" && (
               <ListingCard
                 listing={listingState.listing}
+                score={scoreListing(listingState.listing, comps)}
                 onReanalyze={analyze}
                 onSave={handleSave}
                 saveState={saveState}
