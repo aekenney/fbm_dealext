@@ -8,6 +8,7 @@ export type Listing = {
   mileage: number | null;
   location: string | null;
   description: string | null;
+  images: string[];
   extractedAt: number;
 };
 
