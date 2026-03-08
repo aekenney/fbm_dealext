@@ -1,4 +1,5 @@
-import type { ExtensionMessage, MessageResponse, Listing } from "~/types";
+import type { ExtensionMessage, MessageResponse, Listing, SavedComp } from "~/types";
+import { saveComp, getComps } from "~/lib/storage";
 
 async function getMarketplaceTabId(): Promise<number | null> {
   const tabs = await browser.tabs.query({ url: "*://www.facebook.com/marketplace/item/*" });
@@ -30,9 +31,17 @@ export default defineBackground(() => {
           browser.runtime.sendMessage(message).catch(() => {});
           sendResponse({ ok: true });
           return true;
-        case "GET_EXTRACTED":
         case "SAVE_COMP":
+          saveComp(message.payload as Listing)
+            .then((comp) => sendResponse({ ok: true, data: comp }))
+            .catch(() => sendResponse({ ok: false, data: null }));
+          return true;
         case "GET_COMPS":
+          getComps()
+            .then((comps) => sendResponse({ ok: true, data: comps }))
+            .catch(() => sendResponse({ ok: false, data: [] }));
+          return true;
+        case "GET_EXTRACTED":
           sendResponse({ ok: true, data: null });
           return true;
         default:

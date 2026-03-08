@@ -10,3 +10,8 @@ export type Listing = {
   description: string | null;
   extractedAt: number;
 };
+
+export type SavedComp = Listing & {
+  id: string;
+  savedAt: number;
+};
