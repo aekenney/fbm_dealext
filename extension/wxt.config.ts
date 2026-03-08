@@ -9,7 +9,7 @@ export default defineConfig({
     name: EXTENSION_NAME,
     description: EXTENSION_DESCRIPTION,
     version: "0.1.0",
-    permissions: ["activeTab", "storage", "scripting", "sidePanel"],
+    permissions: ["activeTab", "storage", "scripting", "sidePanel", "tabs"],
   },
   vite: () => ({
     plugins: [react()],

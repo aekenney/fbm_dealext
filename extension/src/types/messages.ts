@@ -2,7 +2,8 @@ export type MessageType =
   | "EXTRACT"
   | "GET_EXTRACTED"
   | "SAVE_COMP"
-  | "GET_COMPS";
+  | "GET_COMPS"
+  | "LISTING_EXTRACTED";
 
 export interface ExtensionMessage {
   type: MessageType;
